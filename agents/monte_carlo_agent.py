@@ -145,7 +145,8 @@ class MonteCarloAgent(Agent):
                     cur_node.propagate_completion()
                     return cur_node
                 else:
-                    # no moves, but game not over, so turn passes to other player
+                    # no moves, but game not over, so turn passes to other
+                    # player
                     next_state = self.reversi.next_state(
                         cur_node.game_state, None)
                     pass_node = Node(next_state, None, 1)
@@ -228,10 +229,6 @@ class MonteCarloAgent(Agent):
 
 
 class Node:
-    # note to self: if a move is fully expanded to completion it may not be simulated
-    # any more times (since there is nothing left to simulate) but since the policy
-    # picks the most-simulated node this may result in winning nodes not being picked
-    # as the best move to play.
 
     def __init__(self, game_state, move, amount_children):
         self.game_state = game_state
@@ -240,7 +237,8 @@ class Node:
         self.children = []
         self.parent = None
         self.moves_tried = set()  # which moves have we tried at least once
-        self.moves_unfinished = amount_children  # amount of moves not fully searched to completion
+        # amount of moves not fully searched to completion
+        self.moves_unfinished = amount_children
 
         # the move that led to this child state
         self.move = move
