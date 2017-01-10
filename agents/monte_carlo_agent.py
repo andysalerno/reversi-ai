@@ -46,7 +46,7 @@ class MonteCarloAgent(Agent):
         root = None
         if game_state in self.state_node:
             # This isn't strictly necessary for Monte Carlo to work,
-            # but if we've seen this state before we can get better/faster results by
+            # but if we've added this state to the tree already we can get better/faster results by
             # reusing existing information.
             root = self.state_node[game_state]
         else:
@@ -58,6 +58,7 @@ class MonteCarloAgent(Agent):
                 # to the other player but the board doesn't change.
                 amnt_children = 1
             root = Node(game_state, None, amnt_children)
+            self.state_node[game_state] = root
 
         # even if this is a "recycled" node we've already used,
         # remove its parent as it is now considered our root level node
@@ -65,8 +66,8 @@ class MonteCarloAgent(Agent):
 
         sim_count = 0
         now = time.time()
-        while time.time() - now < self.sim_time and root.moves_unfinished > 0:
-            # pick move to simulate with UCB
+        while time.time() - now < self.sim_time:
+            # pick move to simulate with UCT
             picked_node = self.tree_policy(root)
 
             # run the simulation and get the result
@@ -133,53 +134,60 @@ class MonteCarloAgent(Agent):
         Given a root node, determine which child to visit
         using Upper Confidence Bound.
         """
-        cur_node = root
+        # legal moves represent potential children of root node
+        legal_moves = self.reversi.legal_moves(root.game_state)
+        if len(legal_moves) == 0:
+            if self.reversi.winner(root.game_state) is not False:
+                # no legal moves + game is over = we are at a final leaf node
+                # that can not possibly have any children; game over
+                root.amount_children_unexpanded = 0
 
-        while True:
-            # legal moves represent potential children of root node
-            legal_moves = self.reversi.legal_moves(cur_node.game_state)
-            if not legal_moves:
-                if self.reversi.winner(cur_node.game_state) is not False:
-                    # inform parent nodes that this path was fully explored
-                    # (i.e. the root node was a leaf node)
-                    cur_node.propagate_completion()
-                    return cur_node
-                else:
-                    # no moves, but game not over, so turn passes to other
-                    # player
-                    next_state = self.reversi.next_state(
-                        cur_node.game_state, None)
-                    pass_node = Node(next_state, None, 1)
-                    cur_node.add_child(pass_node)
-                    self.state_node[next_state] = pass_node
-                    cur_node = pass_node
-                    continue
+                # if this makes ALL the parent's children expanded,
+                # prop that information up the tree
+                child = root
+                parent = root.parent
+                while parent is not None and child.amount_children_unexpanded == 0:
+                    parent.amount_children_unexpanded = max(
+                        0, parent.amount_children_unexpanded - 1)
+                    new_parent = parent.parent
+                    child = parent
+                    parent = new_parent
 
-            elif len(cur_node.children) < len(legal_moves):
-                # there are children (moves) that have not been tried yet
-                untried = [
-                    move for move in legal_moves
-                    if move not in cur_node.moves_tried
-                ]
-
-                assert len(untried) > 0
-                move = random.choice(untried)
-                state = self.reversi.next_state(cur_node.game_state, move)
-                child = Node(state, move, len(legal_moves))
-                cur_node.add_child(child)
-                self.state_node[state] = child
-                return child
-
+                return root
             else:
-                # every next state has been simulated at least once
-                cur_node = self.best_child(cur_node)
-                return self.tree_policy(cur_node)
+                # no legal moves + game not over = player must pass turn
+                next_state = self.reversi.next_state(root.game_state, None)
+                pass_node = Node(next_state, None, len(self.reversi.legal_moves(next_state)))
+                root.add_child(pass_node)
+                self.state_node[next_state] = pass_node
+                return self.tree_policy(pass_node)
 
-        return cur_node
+        elif len(root.children) < len(legal_moves):
+            # we have not yet tried all the children for this node
+            untried = [
+                move for move in legal_moves
+                if move not in root.moves_tried
+            ]
+
+            assert len(untried) > 0
+
+            # we have no information about these nodes at all, so pick randomly
+            move = random.choice(untried)
+            next_state = self.reversi.next_state(root.game_state, move)
+            legal_moves = self.reversi.legal_moves(next_state)
+            child = Node(next_state, move, len(legal_moves))
+            root.add_child(child)
+            self.state_node[next_state] = child
+            return child
+
+        else:
+            # we have tried every child node at least once, so traverse tree
+            # with UCT
+            return self.tree_policy(self.best_child(root))
 
     def best_child(self, node):
         """
-        UCB, used in the tree policy to determine
+        UCT, used in the tree policy to determine
         which child of the input node is the best to
         simulate right now.
         """
@@ -230,35 +238,27 @@ class MonteCarloAgent(Agent):
 
 class Node:
 
-    def __init__(self, game_state, move, amount_children):
+    def __init__(self, game_state, move, len_legal_moves):
         self.game_state = game_state
+
         self.plays = 0
         self.wins = 0
+
         self.children = []
         self.parent = None
+
+        self.move = move  # move that led from parent to this child
+        self.len_legal_moves = len_legal_moves
         self.moves_tried = set()  # which moves have we tried at least once
-        # amount of moves not fully searched to completion
-        self.moves_unfinished = amount_children
 
-        # the move that led to this child state
-        self.move = move
+        # this node's children will decrement this when they are expanded fully
+        self.amount_children_unexpanded = self.len_legal_moves
 
-    def propagate_completion(self):
-        """
-        If all children of this move have each been simulated to
-        completion, tell the parent that it has one fewer child
-        node to expand.
-        """
-        if self.moves_unfinished > 0:
-            self.moves_unfinished -= 1
+    def add_child(self, child_node):
+        self.children.append(child_node)
+        child_node.parent = self
 
-        if self.parent is not None:
-            self.parent.propagate_completion()
-
-    def add_child(self, node):
-        self.children.append(node)
-        self.moves_tried.add(node.move)
-        node.parent = self
+        self.moves_tried.add(child_node.move)
 
     def has_children(self):
         return len(self.children) > 0
