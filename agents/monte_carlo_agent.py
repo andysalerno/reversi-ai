@@ -14,7 +14,7 @@ class MonteCarloAgent(Agent):
         self.sim_time = kwargs.get('sim_time', 5)
 
         # map states to nodes for quick lookup
-        self.state_node = {}
+        self.tree_manager = TreeManager(self.reversi)
 
     def reset(self):
         pass
@@ -43,22 +43,7 @@ class MonteCarloAgent(Agent):
         using Monte Carlo Tree Search with an Upper Confidence Bound.
         """
 
-        root = None
-        if game_state in self.state_node:
-            # This isn't strictly necessary for Monte Carlo to work,
-            # but if we've added this state to the tree already we can get better/faster results by
-            # reusing existing information.
-            root = self.state_node[game_state]
-        else:
-            amnt_children = len(self.reversi.legal_moves(game_state))
-            if self.reversi.winner(game_state) is False and amnt_children == 0:
-                # if the game isn't over but a player must pass his move,
-                # (i.e. no other moves are available) then this node will have
-                # one child, which is the 'passing move' Node where control changes over
-                # to the other player but the board doesn't change.
-                amnt_children = 1
-            root = Node(game_state, None, amnt_children)
-            self.state_node[game_state] = root
+        root = self.tree_manager.get_node(game_state)
 
         # even if this is a "recycled" node we've already used,
         # remove its parent as it is now considered our root level node
@@ -70,12 +55,15 @@ class MonteCarloAgent(Agent):
             # pick move to simulate with UCT
             picked_node = self.tree_policy(root)
 
-            # run the simulation and get the result
-            result = self.simulate(picked_node.game_state)
+            if picked_node is not None:
+                # tree_policy() returns None if it reached an end state
 
-            # back prop the result of this move up the tree
-            self.back_prop(picked_node, result)
-            sim_count += 1
+                # run the simulation and get the result
+                result = self.simulate(picked_node.game_state)
+
+                # back prop the result of this move up the tree
+                self.back_prop(picked_node, result)
+                sim_count += 1
 
         # the following is purely for printing information
         results = {}
@@ -135,35 +123,34 @@ class MonteCarloAgent(Agent):
         using Upper Confidence Bound.
         """
         # legal moves represent potential children of root node
-        legal_moves = self.reversi.legal_moves(root.game_state)
+        legal_moves = root.legal_moves
         if len(legal_moves) == 0:
-            if self.reversi.winner(root.game_state) is not False:
-                # no legal moves + game is over = we are at a final leaf node
-                # that can not possibly have any children; game over
-                root.amount_children_unexpanded = 0
+            # no legal moves + game is over = we are at a final leaf node
+            # that cannot possibly have any children; game over
+            root.amount_children_unexpanded = 0
 
-                # if this makes ALL the parent's children expanded,
-                # prop that information up the tree
-                child = root
-                parent = root.parent
-                while parent is not None and child.amount_children_unexpanded == 0:
-                    parent.amount_children_unexpanded = max(
-                        0, parent.amount_children_unexpanded - 1)
-                    new_parent = parent.parent
-                    child = parent
-                    parent = new_parent
+            # if this makes ALL the parent's children expanded,
+            # prop that information up the tree
+            child = root
+            parent = root.parent
+            while parent is not None and child.amount_children_unexpanded == 0:
+                parent.amount_children_unexpanded = max(
+                    0, parent.amount_children_unexpanded - 1)
+                new_parent = parent.parent
+                child = parent
+                parent = new_parent
 
-                return root
-            else:
-                # no legal moves + game not over = player must pass turn
-                next_state = self.reversi.next_state(root.game_state, None)
-                pass_node = Node(next_state, None, len(self.reversi.legal_moves(next_state)))
-                root.add_child(pass_node)
-                self.state_node[next_state] = pass_node
-                return self.tree_policy(pass_node)
+            return root
+        elif legal_moves == [None]:
+            #  if player must pass turn
+            next_state = self.reversi.next_state(root.game_state, None)
+            pass_node = self.tree_manager.add_node(next_state, None, root)
+            return self.tree_policy(pass_node)
 
         elif len(root.children) < len(legal_moves):
             # we have not yet tried all the children for this node
+            # TODO: instead of doing this, create children nodes with 0/0 win/play
+            # every time we hit a root, I think. think it over
             untried = [
                 move for move in legal_moves
                 if move not in root.moves_tried
@@ -174,11 +161,8 @@ class MonteCarloAgent(Agent):
             # we have no information about these nodes at all, so pick randomly
             move = random.choice(untried)
             next_state = self.reversi.next_state(root.game_state, move)
-            legal_moves = self.reversi.legal_moves(next_state)
-            child = Node(next_state, move, len(legal_moves))
-            root.add_child(child)
-            self.state_node[next_state] = child
-            return child
+            root.moves_tried.add(move)
+            return self.tree_manager.add_node(next_state, move, root)
 
         else:
             # we have tried every child node at least once, so traverse tree
@@ -236,29 +220,57 @@ class MonteCarloAgent(Agent):
             state = self.reversi.apply_move(state, picked)
 
 
+class TreeManager:
+
+    def __init__(self, reversi):
+        self.state_node = {}
+        self.reversi = reversi
+
+    def add_node(self, game_state, move, parent=None):
+        legal_moves = self.reversi.legal_moves(game_state)
+        is_game_over = self.reversi.winner(game_state) is not False
+        if len(legal_moves) == 0 and not is_game_over:
+            legal_moves = [None]  # it can only make one move: pass turn
+        n = Node(game_state, move, legal_moves)
+        n.parent = parent
+        if parent is not None:
+            parent.add_child(n)
+        self.state_node[game_state] = n
+        return n
+
+    def get_node(self, game_state):
+        """
+        Get the existing Node for this game_state.
+        Creates one if it does not yet exist.
+        """
+        if game_state in self.state_node:
+            return self.state_node[game_state]
+        else:
+            return self.add_node(game_state, None)
+
+
 class Node:
 
-    def __init__(self, game_state, move, len_legal_moves):
+    def __init__(self, game_state, move, legal_moves):
         self.game_state = game_state
 
         self.plays = 0
         self.wins = 0
 
-        self.children = []
+        self.children = []  # child Nodes
         self.parent = None
 
         self.move = move  # move that led from parent to this child
-        self.len_legal_moves = len_legal_moves
-        self.moves_tried = set()  # which moves have we tried at least once
+        self.legal_moves = legal_moves
+        self.moves_tried = set()
 
-        # this node's children will decrement this when they are expanded fully
-        self.amount_children_unexpanded = self.len_legal_moves
+        # how many children have NOT been fully expanded (had their subtrees
+        # completely searched)?
+        self.amount_children_unexpanded = len(self.legal_moves)
 
     def add_child(self, child_node):
         self.children.append(child_node)
         child_node.parent = self
-
-        self.moves_tried.add(child_node.move)
 
     def has_children(self):
         return len(self.children) > 0

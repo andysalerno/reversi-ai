@@ -189,7 +189,6 @@ class Reversi:
 
         for each in to_flip:
             board.flip_stone(each[0], each[1])
-            # board.place_stone_at(color, each[0], each[1])
 
         game_state = (game_state[0], opponent[game_state[1]])
         return game_state
