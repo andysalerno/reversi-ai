@@ -55,15 +55,12 @@ class MonteCarloAgent(Agent):
             # pick move to simulate with UCT
             picked_node = self.tree_policy(root)
 
-            if picked_node is not None:
-                # tree_policy() returns None if it reached an end state
+            # run the simulation and get the result
+            result = self.simulate(picked_node.game_state)
 
-                # run the simulation and get the result
-                result = self.simulate(picked_node.game_state)
-
-                # back prop the result of this move up the tree
-                self.back_prop(picked_node, result)
-                sim_count += 1
+            # back prop the result of this move up the tree
+            self.back_prop(picked_node, result)
+            sim_count += 1
 
         # the following is purely for printing information
         results = {}
@@ -73,8 +70,9 @@ class MonteCarloAgent(Agent):
             results[position] = (wins, plays)
 
         for position in sorted(results, key=lambda x: results[x][1]):
-            info('{}: ({}/{})'.format(position,
-                                      results[position][0], results[position][1]))
+            wins, plays = results[position][0], results[position][1]
+            info('{}: ({}/{}) ({:.2f})'.format(position,
+                                               wins, plays, wins / plays))
         info('{} simulations performed.'.format(sim_count))
 
         return self.best_action(root)
@@ -149,8 +147,6 @@ class MonteCarloAgent(Agent):
 
         elif len(root.children) < len(legal_moves):
             # we have not yet tried all the children for this node
-            # TODO: instead of doing this, create children nodes with 0/0 win/play
-            # every time we hit a root, I think. think it over
             untried = [
                 move for move in legal_moves
                 if move not in root.moves_tried
@@ -203,7 +199,11 @@ class MonteCarloAgent(Agent):
         while True:
             winner = self.reversi.winner(state)
             if winner is not False:
-                if winner == self.color:
+                black_count, white_count = state[0].get_stone_counts()
+                if black_count == white_count:
+                    # we don't want to tie, we want to win!
+                    return LOSS_PRIZE
+                elif winner == self.color:
                     return WIN_PRIZE
                 elif winner == opponent[self.color]:
                     return LOSS_PRIZE

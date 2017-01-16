@@ -150,9 +150,9 @@ class Reversi:
         position to place a piece, transform it into the game_state that follows this play."""
 
         # if move is None, then the player simply passed their turn
-        if not move:
-            game_state = (game_state[0], opponent[game_state[1]])
-            return game_state
+        if move is None:
+            pass_state = (game_state[0], opponent[game_state[1]])
+            return pass_state
 
         x, y = move
         color = game_state[1]
