@@ -3,6 +3,7 @@ from game.board import Board, BLACK, WHITE, EMPTY
 from agents.random_agent import RandomAgent
 from util import *
 from cache_dict import CacheDict
+from game.socket_sender import SocketSender
 
 
 class Reversi:
@@ -10,6 +11,8 @@ class Reversi:
 
     def __init__(self, **kwargs):
         self.size = kwargs.get('size', 8)
+        self.gui_enabled = kwargs.get('gui', False)
+        self.socket_sender = None
         self.board = Board(self.size)
 
         WhiteAgent = kwargs.get('WhiteAgent', RandomAgent)
@@ -18,6 +21,9 @@ class Reversi:
         self.black_agent = BlackAgent(self, BLACK, **kwargs)
 
         make_silent(kwargs.get('silent', False))
+        
+        if self.gui_enabled:
+            self.socket_sender = SocketSender()
 
         self.reset()
 
@@ -35,6 +41,7 @@ class Reversi:
         self.print_board(state)
         info_newline()
         while self.winner(state) is False:
+            self.socket_sender.send_board(state[0])
             color = state[1]
             picked = self.agent_pick_move(state)
             state = self.next_state(state, picked)
