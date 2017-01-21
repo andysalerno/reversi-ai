@@ -143,7 +143,8 @@ class MonteCarloAgent(Agent):
             #  if player must pass turn
             next_state = self.reversi.next_state(root.game_state, None)
             pass_node = self.tree_manager.add_node(next_state, None, root)
-            return self.tree_policy(pass_node)
+            # return self.tree_policy(pass_node)
+            return pass_node
 
         elif len(root.children) < len(legal_moves):
             # we have not yet tried all the children for this node
