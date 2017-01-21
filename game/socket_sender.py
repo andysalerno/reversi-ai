@@ -1,4 +1,5 @@
 import socket
+import json
 import sys
 from util import BLACK, WHITE
 from game.board import BLACK_PIECE, WHITE_PIECE
@@ -7,6 +8,7 @@ HOST = ''
 PORT = 10994
 
 EMPTY = '-'
+INITIAL_STRING = 'initial_string'
 
 class SocketSender:
 
@@ -20,13 +22,20 @@ class SocketSender:
             sys.exit()
         
         self.connection = self.listen_and_connect()
+
+        # send an initial configuration string of metadata
+        self.send_str(self.connection, json.dumps({
+            'hello': 'test_config_string'
+        }))
     
     def send_board(self, board):
         assert type(board).__name__ == 'Board'
-        serialized = self._serialize_board(board)
-        print('[Server] Sending: {}'.format(serialized))
+        flat_board = self._serialize_board(board)
         try:
-            self.connection.sendall(bytearray(serialized, 'utf-8'))
+            message = json.dumps({
+                'board': flat_board
+            })
+            self.send_str(self.connection, message)
         except:
             print('[Server] connection to GUI client failed.')
             quit()
@@ -53,3 +62,9 @@ class SocketSender:
         connection, address = self.soc.accept()  # blocking
         print('[Server] connected to: {}:{}'.format(address[0], address[1]))
         return connection
+    
+    @staticmethod
+    def send_str(connection, str_message):
+        as_bytes = bytearray(str_message, 'utf-8')
+        print('[Server]: sending message: {}'.format(str_message))
+        connection.sendall(as_bytes)

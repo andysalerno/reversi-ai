@@ -31,6 +31,10 @@ class ReversiWindow(QtWidgets.QWidget):
         new_height = new_size.height()
         new_width = int(new_height * 1) #  change ratio how you like
         self.resize(new_width, new_height)
+    
+    def mousePressEvent(self, mouse_event):
+        grid_x, grid_y = self.pixels_to_grid(mouse_event.x(), mouse_event.y())
+        print(grid_x, grid_y)
 
     def paintEvent(self, q_paint_event):
         # board background color
@@ -68,5 +72,10 @@ class ReversiWindow(QtWidgets.QWidget):
                         pieces_path.addEllipse(bounding_rect)
                         painter.fillPath(pieces_path, BLACK)
 
+    def pixels_to_grid(self, pix_x, pix_y):
+        grid_width = self.width() / 8
+        grid_height = self.height() / 8
+
+        return int(pix_x / grid_width), int(8 - (pix_y / grid_height))
                 
     
