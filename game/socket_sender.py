@@ -1,4 +1,5 @@
 import socket
+import sys
 from util import BLACK, WHITE
 from game.board import BLACK_PIECE, WHITE_PIECE
 
@@ -10,14 +11,25 @@ EMPTY = '-'
 class SocketSender:
 
     def __init__(self):
-        print('Attempting to connect to {}:{}...'.format(HOST, PORT))
-        self.soc = socket.create_connection((HOST, PORT))
-        print('Connected to GUI.')
+        self.soc = socket.socket()
+        try:
+            self.soc.bind((HOST, PORT))
+            print('[Server] socket bound to {}:{}'.format(HOST, PORT))
+        except:
+            print('[Server] couldn\'t bind to {}:{}'.format(HOST, PORT))
+            sys.exit()
+        
+        self.connection = self.listen_and_connect()
     
     def send_board(self, board):
         assert type(board).__name__ == 'Board'
         serialized = self._serialize_board(board)
-        self.soc.sendall(bytearray(serialized, 'utf-8'))
+        print('[Server] Sending: {}'.format(serialized))
+        try:
+            self.connection.sendall(bytearray(serialized, 'utf-8'))
+        except:
+            print('[Server] connection to GUI client failed.')
+            quit()
     
     @staticmethod
     def _serialize_board(board):
@@ -34,3 +46,10 @@ class SocketSender:
                 else:
                     as_str += EMPTY
         return as_str
+
+    def listen_and_connect(self):
+        self.soc.listen(1)  # non-blocking
+        print('[Server] waiting for connection...')
+        connection, address = self.soc.accept()  # blocking
+        print('[Server] connected to: {}:{}'.format(address[0], address[1]))
+        return connection

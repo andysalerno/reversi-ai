@@ -4,7 +4,7 @@ GREEN = QtGui.QColor(51, 204, 51)
 BLACK = QtGui.QColor(0, 0, 0)
 WHITE = QtGui.QColor(255, 255, 255)
 
-NET_POLL_MS = 1 * 1000 
+POLL_QUEUE = 0.25 * 1000 
 
 
 class ReversiWindow(QtWidgets.QWidget):
@@ -20,11 +20,10 @@ class ReversiWindow(QtWidgets.QWidget):
         # timer for repainting/polling network
         timer = QtCore.QTimer(self)
         timer.timeout.connect(self.net_tick)
-        timer.start(NET_POLL_MS)
+        timer.start(POLL_QUEUE)
     
     def net_tick(self):
-        self.board = self.socket_receiver.receive_board()
-        print(self.board)
+        self.board = self.socket_receiver.get_board()
         self.repaint()
 
     def resizeEvent(self, resize_event):

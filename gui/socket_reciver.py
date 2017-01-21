@@ -1,41 +1,40 @@
 import socket
+import threading
 import sys
 import time
 
 HOST = ''
 PORT = 10994
 
-TIMEOUT = 1 * 60
-
-
 class SocketReceiver:
 
     def __init__(self):
-        self.soc = socket.socket()
+        self.board = None
 
-        try:
-            self.soc.bind((HOST, PORT))
-            print('socket connected to {}:{}'.format(HOST, PORT))
-        except:
-            print('couldn\'t bind to {}:{}'.format(HOST, PORT))
-            sys.exit()
+        print('[Client] Attempting to connect to {}:{}...'.format(HOST, PORT))
+        self.connection = socket.create_connection((HOST, PORT), timeout=10)
+        print('[Client] Connected.')
+
+        t = threading.Thread(target=self.socket_receive_board,
+                             name='receive_board', daemon=True)
+        t.start()
 
 
-        self.connection = self.establish_connection()
+    def get_board(self):
+        return self.board
 
-    def receive_board(self):
-        message = self.connection.recv(2056)
-        return str(message, 'utf-8')
+    def socket_receive_board(self):
+        while True:
+            try:
+                print('[Client] waiting for message...')
+                raw_message = self.connection.recv(2056)
+                str_message = str(raw_message, 'utf-8')
+                if len(str_message) > 0:
+                    self.board = str_message
+                    print('[Client] message received.'.format(self.board))
+            except:
+                pass
+            time.sleep(0.10)
 
     def send_move(self, move):
         pass
-
-    def _get_one_message(self):
-        pass
-
-    def establish_connection(self):
-        self.soc.listen(1)
-        print('Waiting for connection...')
-        connection, address = self.soc.accept()
-        print('connected to: {}:{}'.format(address[0], address[1]))
-        return connection
