@@ -1,56 +1,53 @@
-import socket
-import json
-import threading
-import sys
-import time
+from socket_parent import SocketParent
 
 HOST = ''
 PORT = 10994
 
-class SocketReceiver:
+
+class SocketReceiver(SocketParent):
 
     def __init__(self):
+        super(SocketReceiver, self).__init__(SocketParent.CLIENT)
         self.board = None
+        self.spectate_only = True  # if True, don't bother sending clicks to gameserver
 
-        print('[Client] Attempting to connect to {}:{}...'.format(HOST, PORT))
-        self.connection = socket.create_connection((HOST, PORT), timeout=10)
-        print('[Client] Connected.')
+        # CONNECTION PROTOCOL
+        # 1. First message is "ready to receive" from gui to game server
+        self.send_ready_to_recv(self.connection)
 
-        # part of protocol, first string will contain config info
-        # like board size, whether there is a human player, etc
-        self.config_string = self.receive_json(self.connection)
-        print(self.config_string)
-        print('[Client] got config string: {}'.format(self.config_string))
-
-        t = threading.Thread(target=self.socket_receive_board,
-                             name='receive_board', daemon=True)
-        t.start()
-
+        # 2. Next the "hello" message is sent from game server to gui
+        # (this is handled in the receive thread loop)
 
     def get_board(self):
         return self.board
 
-    def socket_receive_board(self):
-        while True:
-            try:
-                print('[Client] waiting for message...')
-                board_str = self.receive_json(self.connection)['board']
-                if len(board_str) > 0:
-                    self.board = board_str
-                    print('[Client] message received.'.format(board_str))
-            except:
-                pass
-            time.sleep(0.10)
+    def act_on_message(self, message):
+        if message['type'] == SocketParent.BOARD:
+            self._log('Acting on message BOARD.')
+            self.board = message['board']
+        elif message['type'] == SocketParent.HELLO:
+            self._log('Acting on message HELLO.')
+            self.spectate_only = message['spectate_only'] == True
+        else:
+            raise ValueError(
+                'Unexpected message type: {}'.format(message['type']))
 
     def send_move(self, move):
-        pass
-    
-    @staticmethod
-    def receive_str(connection):
-        raw_bytes = connection.recv(2056)
-        return str(raw_bytes, 'utf-8')
-    
-    def receive_json(self, connection):
-        str_message = self.receive_str(connection)
-        return json.loads(str_message)
+        if not self.spectate_only:
+            self.send_json(self.connection, {
+                'type': SocketParent.MOVE,
+                'move': '{},{}'.format(move[0], move[1])
+            })
+            self._log('Sent move: {}'.format(move))
+        else:
+            self._log('Spectator only mode; click not sent.')
 
+    def send_ready_to_recv(self, connection):
+        """
+        Tell the sender that we've flushed our buffer and we're ready
+        to receive again.
+        """
+        self.send_json(connection, {
+            'type': SocketParent.CONTROL,
+            'message': SocketParent.READY_TO_RECEIVE,
+        })

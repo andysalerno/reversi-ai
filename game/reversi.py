@@ -1,4 +1,5 @@
 from copy import deepcopy
+import time
 from game.board import Board, BLACK, WHITE, EMPTY
 from agents.random_agent import RandomAgent
 from util import *
@@ -21,9 +22,12 @@ class Reversi:
         self.black_agent = BlackAgent(self, BLACK, **kwargs)
 
         make_silent(kwargs.get('silent', False))
-        
+
         if self.gui_enabled:
-            self.socket_sender = SocketSender()
+            has_human = type(self.white_agent).__name__ == 'HumanAgent' or type(
+                self.black_agent).__name__ == 'HumanAgent'
+            print('has human? {}'.format(has_human))
+            self.socket_sender = SocketSender(has_human)
 
         self.reset()
 
@@ -75,13 +79,26 @@ class Reversi:
         legal_moves = self.legal_moves(state)
         picked = None
         if color == WHITE:
-            picked = self.white_agent.get_action(state, legal_moves)
+            if self.gui_enabled and type(self.white_agent).__name__ == 'HumanAgent':
+                print('Waiting for human to select move in gui...')
+                while picked is None:
+                    picked = self.socket_sender.pop_move()
+                    time.sleep(0.1)
+            else:
+                picked = self.white_agent.get_action(state, legal_moves)
         elif color == BLACK:
-            picked = self.black_agent.get_action(state, legal_moves)
+            if self.gui_enabled and type(self.black_agent).__name__ == 'HumanAgent':
+                print('Waiting for human to select move in gui...')
+                while picked is None:
+                    picked = self.socket_sender.pop_move()
+                    time.sleep(0.1)
+            else:
+                picked = self.black_agent.get_action(state, legal_moves)
         else:
             raise ValueError
 
         if picked is None:
+            assert len(legal_moves) == 0
             return None
         elif picked not in legal_moves:
             info(str(picked) + ' is not a legal move! Game over.')

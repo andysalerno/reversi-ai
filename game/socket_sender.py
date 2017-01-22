@@ -1,3 +1,4 @@
+from socket_parent import SocketParent
 import socket
 import json
 import sys
@@ -10,35 +11,53 @@ PORT = 10994
 EMPTY = '-'
 INITIAL_STRING = 'initial_string'
 
-class SocketSender:
+class SocketSender(SocketParent):
 
-    def __init__(self):
-        self.soc = socket.socket()
-        try:
-            self.soc.bind((HOST, PORT))
-            print('[Server] socket bound to {}:{}'.format(HOST, PORT))
-        except:
-            print('[Server] couldn\'t bind to {}:{}'.format(HOST, PORT))
-            sys.exit()
+    def __init__(self, accept_gui_moves):
+        super(SocketSender, self).__init__(SocketParent.SERVER)
+
+        self.move = None  # set this when we receive a move from the gui
+        self.accept_gui_moves = accept_gui_moves
+
+    
+    def act_on_message(self, message):
+        print(str(message))
+        assert 'type' in message.keys()
+
+        if message['type'] == SocketParent.CONTROL and message['message'] == SocketParent.READY_TO_RECEIVE:
+            self._log('Ready message received.')
+
+            # Reply to ready message with hello message
+            self.send_json(self.connection, {
+                'type': SocketParent.HELLO,
+                'spectate_only': not self.accept_gui_moves
+            })
         
-        self.connection = self.listen_and_connect()
+        elif message['type'] == SocketParent.MOVE:
+            move = message['move']
+            self._log('Move message received: {}'.format(move))
 
-        # send an initial configuration string of metadata
-        self.send_str(self.connection, json.dumps({
-            'hello': 'test_config_string'
-        }))
+            x, y = move.split(',')
+            self.move = (int(x), int(y))
     
     def send_board(self, board):
         assert type(board).__name__ == 'Board'
         flat_board = self._serialize_board(board)
         try:
-            message = json.dumps({
+            self.send_json(self.connection,
+            {
+                'type': SocketParent.BOARD,
                 'board': flat_board
             })
-            self.send_str(self.connection, message)
         except:
             print('[Server] connection to GUI client failed.')
             quit()
+    
+    def pop_move(self):
+        ret = self.move
+        self.move = None  # acts like a queue of length 1, popping move to None
+
+        return ret
     
     @staticmethod
     def _serialize_board(board):
@@ -55,16 +74,3 @@ class SocketSender:
                 else:
                     as_str += EMPTY
         return as_str
-
-    def listen_and_connect(self):
-        self.soc.listen(1)  # non-blocking
-        print('[Server] waiting for connection...')
-        connection, address = self.soc.accept()  # blocking
-        print('[Server] connected to: {}:{}'.format(address[0], address[1]))
-        return connection
-    
-    @staticmethod
-    def send_str(connection, str_message):
-        as_bytes = bytearray(str_message, 'utf-8')
-        print('[Server]: sending message: {}'.format(str_message))
-        connection.sendall(as_bytes)

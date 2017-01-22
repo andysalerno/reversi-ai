@@ -4,7 +4,8 @@ GREEN = QtGui.QColor(51, 204, 51)
 BLACK = QtGui.QColor(0, 0, 0)
 WHITE = QtGui.QColor(255, 255, 255)
 
-POLL_QUEUE = 0.25 * 1000 
+# frequency (ms) to poll the SocketReceiver for new board state
+POLL_QUEUE_INTERVAL = 0.25 * 1000 
 
 
 class ReversiWindow(QtWidgets.QWidget):
@@ -19,10 +20,10 @@ class ReversiWindow(QtWidgets.QWidget):
 
         # timer for repainting/polling network
         timer = QtCore.QTimer(self)
-        timer.timeout.connect(self.net_tick)
-        timer.start(POLL_QUEUE)
+        timer.timeout.connect(self.poll_msg_queue)
+        timer.start(POLL_QUEUE_INTERVAL)
     
-    def net_tick(self):
+    def poll_msg_queue(self):
         self.board = self.socket_receiver.get_board()
         self.repaint()
 
@@ -34,7 +35,8 @@ class ReversiWindow(QtWidgets.QWidget):
     
     def mousePressEvent(self, mouse_event):
         grid_x, grid_y = self.pixels_to_grid(mouse_event.x(), mouse_event.y())
-        print(grid_x, grid_y)
+        print('Click: {}'.format(grid_x, grid_y))
+        self.socket_receiver.send_move((grid_x, grid_y))
 
     def paintEvent(self, q_paint_event):
         # board background color
