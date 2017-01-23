@@ -27,6 +27,17 @@ class ReversiWindow(QtWidgets.QWidget):
         self.board = self.socket_receiver.get_board()
         self.repaint()
 
+        winner = self.socket_receiver.get_winner()
+        if winner is not None:
+            dialog = QtWidgets.QMessageBox()
+            dialog.setText('{} wins.'.format(winner))
+            dialog.exec_()
+        
+        if self.socket_receiver.get_no_moves() is True:
+            dialog = QtWidgets.QMessageBox()
+            dialog.setText('No available moves, skipping your turn.')
+            dialog.exec_()
+
     def resizeEvent(self, resize_event):
         new_size = resize_event.size()
         new_height = new_size.height()

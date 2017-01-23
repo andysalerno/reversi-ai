@@ -21,7 +21,6 @@ class SocketSender(SocketParent):
 
     
     def act_on_message(self, message):
-        print(str(message))
         assert 'type' in message.keys()
 
         if message['type'] == SocketParent.CONTROL and message['message'] == SocketParent.READY_TO_RECEIVE:
@@ -50,8 +49,19 @@ class SocketSender(SocketParent):
                 'board': flat_board
             })
         except:
-            print('[Server] connection to GUI client failed.')
+            self._print_message('Connection to GUI client failed.')
             quit()
+    
+    def send_game_over(self, winner):
+        self.send_json(self.connection, {
+            'type': SocketParent.GAME_OVER,
+            'winner': winner
+        })
+    
+    def send_no_legal_moves(self):
+        self.send_json(self.connection, {
+            'type': SocketParent.NO_MOVES
+        })
     
     def pop_move(self):
         ret = self.move

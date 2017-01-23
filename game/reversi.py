@@ -6,7 +6,8 @@ from util import *
 from cache_dict import CacheDict
 from game.socket_sender import SocketSender
 
-MOVE_QUEUE_POLL = 0.10  # in ms
+# time in ms to wait between polling move queue for moves from gui
+MOVE_QUEUE_POLL = 0.10
 
 
 class Reversi:
@@ -47,7 +48,8 @@ class Reversi:
         self.print_board(state)
         info_newline()
         while self.winner(state) is False:
-            self.socket_sender.send_board(state[0])
+            if self.gui_enabled:
+                self.socket_sender.send_board(state[0])
             color = state[1]
             picked = self.agent_pick_move(state)
             state = self.next_state(state, picked)
@@ -59,16 +61,22 @@ class Reversi:
                 info('{} plays at {}'.format(color_name[color], str(picked)))
             info_newline()
 
+        # Game Over
         self.white_agent.observe_win(state)
         self.black_agent.observe_win(state)
 
         self.print_board(state)
-        self.socket_sender.send_board(state[0])
+
 
         # figure out who won
         black_count, white_count = state[0].get_stone_counts()
         winner = BLACK if black_count > white_count else WHITE
         info('{} wins.'.format(color_name[winner]))
+
+        if self.gui_enabled:
+            self.socket_sender.send_board(state[0])
+            self.socket_sender.send_game_over(winner)
+
         self.reset()
         return winner, white_count, black_count
 
@@ -107,6 +115,7 @@ class Reversi:
 
     def gui_pick_move(self, legal_moves):
         if len(legal_moves) == 0:
+            self.socket_sender.send_no_legal_moves()
             return None
 
         picked = None

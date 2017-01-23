@@ -125,18 +125,18 @@ class MonteCarloAgent(Agent):
         if len(legal_moves) == 0:
             # no legal moves + game is over = we are at a final leaf node
             # that cannot possibly have any children; game over
-            root.amount_children_unexpanded = 0
+            #root.amount_children_unexpanded = 0
 
             # if this makes ALL the parent's children expanded,
             # prop that information up the tree
-            child = root
-            parent = root.parent
-            while parent is not None and child.amount_children_unexpanded == 0:
-                parent.amount_children_unexpanded = max(
-                    0, parent.amount_children_unexpanded - 1)
-                new_parent = parent.parent
-                child = parent
-                parent = new_parent
+            # child = root
+            # parent = root.parent
+            # while parent is not None and child.amount_children_unexpanded == 0:
+            #     parent.amount_children_unexpanded = max(
+            #         0, parent.amount_children_unexpanded - 1)
+            #     new_parent = parent.parent
+            #    child = parent
+            #    parent = new_parent
 
             return root
         elif legal_moves == [None]:
@@ -175,12 +175,12 @@ class MonteCarloAgent(Agent):
         enemy_turn = (node.game_state[1] != self.color)
         C = 1  # 'exploration' value
         values = {}
+        _, parent_plays = node.get_wins_plays()
         for child in node.children:
             wins, plays = child.get_wins_plays()
             if enemy_turn:
                 # the enemy will play against us, not for us
                 wins = plays - wins
-            _, parent_plays = node.get_wins_plays()
             assert parent_plays > 0
             values[child] = (wins / plays) + C * \
                 math.sqrt(2 * math.log(parent_plays) / plays)

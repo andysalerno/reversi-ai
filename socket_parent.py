@@ -3,21 +3,26 @@ import time
 import json
 import threading
 
-CLIENT_LOGGING = True
-SERVER_LOGGING = True
+CLIENT_LOGGING = False
+SERVER_LOGGING = False
 
 HOST = ''
 PORT = 10994
 
 # frequency (seconds) to poll socket for received messages
-RECEIVE_DELAY = 1 * 0.10
+# and push them into the queue
+SOCKET_POLL_FREQ = 1 * 0.10
+
+# frequency (seconds) to pop a message from the queue and act on it
+QUEUE_POP_FREQ = 1 * 0.10
+
 
 class SocketParent:
     # behavior modes
     CLIENT, SERVER = range(2)
 
     # message types
-    CONTROL, BOARD, HELLO, MOVE = range(4)
+    CONTROL, BOARD, HELLO, MOVE, GAME_OVER, NO_MOVES = range(6)
 
     # control message types
     READY_TO_RECEIVE = 1  # range(1)
@@ -42,21 +47,21 @@ class SocketParent:
                              daemon=True)
         t.start()
 
+        # Start the thread for popping message out of the message queue
         s = threading.Thread(target=self.pop_message_and_act_loop,
                                 name='act_on_queue',
                                 daemon=True)
         s.start()
     
     def _init_client(self):
-        self._log('Attempting to connect to server....')
+        self._print_message('Attempting to connect to server....')
         while True:
             try:
                 self.connection = socket.create_connection((HOST, PORT), timeout=None)
-                self._log('Connection to server established.')
+                self._print_message('Connection to server established.')
                 break
             except BlockingIOError:
-                print('blocked.')
-                time.sleep(0.10)
+                time.sleep(SOCKET_POLL_FREQ)
 
     def _init_server(self):
         def listen_and_connect(soc):
@@ -80,21 +85,24 @@ class SocketParent:
     def receive_into_queue(self):
         while True:
             self.recv_json_into_queue(self.connection, self.message_queue)
-            time.sleep(RECEIVE_DELAY)
+            time.sleep(SOCKET_POLL_FREQ)
     
     def act_on_message(self, message):
         raise NotImplementedError
     
-    def pop_message_and_act(self):
-        oldest_message = self.pop_from_queue(self.message_queue)
-        if oldest_message is not None:
-            self.act_on_message(oldest_message)
+    def act_on_queue(self):
+        """
+        Pop from the queue, acting on each popped message,
+        unti the queue is empty.
+        """
+        while len(self.message_queue) > 0:
+            oldest_message = self.pop_from_queue(self.message_queue)
+            if oldest_message is not None:
+                self.act_on_message(oldest_message)
     
     def pop_message_and_act_loop(self):
         while True:
-            self.pop_message_and_act()
-            time.sleep(0.1)
-    
+            self.act_on_queue()
     
     def _log(self, str_message):
         if self.CON_TYPE == SocketParent.CLIENT and CLIENT_LOGGING:
@@ -168,7 +176,6 @@ class SocketParent:
             as_str = as_str.split('\n')
             json_messages = []
             for s in [i for i in as_str if len(i) > 0]:
-                print(s)
                 try:
                     json_messages.append(json.loads(s))
                 except json.JSONDecodeError:

@@ -1,4 +1,5 @@
 from socket_parent import SocketParent
+from util import color_name
 
 HOST = ''
 PORT = 10994
@@ -9,6 +10,8 @@ class SocketReceiver(SocketParent):
     def __init__(self):
         super(SocketReceiver, self).__init__(SocketParent.CLIENT)
         self.board = None
+        self.winner = None
+        self.no_moves = None
         self.spectate_only = True  # if True, don't bother sending clicks to gameserver
 
         # CONNECTION PROTOCOL
@@ -21,6 +24,16 @@ class SocketReceiver(SocketParent):
     def get_board(self):
         return self.board
 
+    def get_winner(self):
+        ret = self.winner
+        self.winner = None
+        return ret
+
+    def get_no_moves(self):
+        ret = self.no_moves
+        self.no_moves = None
+        return ret
+
     def act_on_message(self, message):
         if message['type'] == SocketParent.BOARD:
             self._log('Acting on message BOARD.')
@@ -28,6 +41,12 @@ class SocketReceiver(SocketParent):
         elif message['type'] == SocketParent.HELLO:
             self._log('Acting on message HELLO.')
             self.spectate_only = message['spectate_only'] == True
+        elif message['type'] == SocketParent.GAME_OVER:
+            self._log('Acting on message GAME_OVER.')
+            win_enum = message['winner']
+            self.winner = color_name[win_enum]
+        elif message['type'] == SocketParent.NO_MOVES:
+            self.no_moves = True
         else:
             raise ValueError(
                 'Unexpected message type: {}'.format(message['type']))
