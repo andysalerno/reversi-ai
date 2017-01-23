@@ -6,6 +6,8 @@ from util import *
 from cache_dict import CacheDict
 from game.socket_sender import SocketSender
 
+MOVE_QUEUE_POLL = 0.10  # in ms
+
 
 class Reversi:
     """This class enforces the rules of the game of Reversi."""
@@ -61,6 +63,7 @@ class Reversi:
         self.black_agent.observe_win(state)
 
         self.print_board(state)
+        self.socket_sender.send_board(state[0])
 
         # figure out who won
         black_count, white_count = state[0].get_stone_counts()
@@ -81,17 +84,13 @@ class Reversi:
         if color == WHITE:
             if self.gui_enabled and type(self.white_agent).__name__ == 'HumanAgent':
                 print('Waiting for human to select move in gui...')
-                while picked is None:
-                    picked = self.socket_sender.pop_move()
-                    time.sleep(0.1)
+                picked = self.gui_pick_move(legal_moves)
             else:
                 picked = self.white_agent.get_action(state, legal_moves)
         elif color == BLACK:
             if self.gui_enabled and type(self.black_agent).__name__ == 'HumanAgent':
                 print('Waiting for human to select move in gui...')
-                while picked is None:
-                    picked = self.socket_sender.pop_move()
-                    time.sleep(0.1)
+                picked = self.gui_pick_move(legal_moves)
             else:
                 picked = self.black_agent.get_action(state, legal_moves)
         else:
@@ -103,6 +102,17 @@ class Reversi:
         elif picked not in legal_moves:
             info(str(picked) + ' is not a legal move! Game over.')
             quit()
+
+        return picked
+
+    def gui_pick_move(self, legal_moves):
+        if len(legal_moves) == 0:
+            return None
+
+        picked = None
+        while picked is None or picked not in legal_moves:
+            picked = self.socket_sender.pop_move()
+            time.sleep(MOVE_QUEUE_POLL)
 
         return picked
 

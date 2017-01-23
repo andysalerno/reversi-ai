@@ -35,7 +35,6 @@ class ReversiWindow(QtWidgets.QWidget):
     
     def mousePressEvent(self, mouse_event):
         grid_x, grid_y = self.pixels_to_grid(mouse_event.x(), mouse_event.y())
-        print('Click: {}'.format(grid_x, grid_y))
         self.socket_receiver.send_move((grid_x, grid_y))
 
     def paintEvent(self, q_paint_event):

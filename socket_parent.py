@@ -9,8 +9,6 @@ SERVER_LOGGING = True
 HOST = ''
 PORT = 10994
 
-CLIENT_TIMEOUT = 20
-
 # frequency (seconds) to poll socket for received messages
 RECEIVE_DELAY = 1 * 0.10
 
@@ -50,11 +48,34 @@ class SocketParent:
         s.start()
     
     def _init_client(self):
+        self._log('Attempting to connect to server....')
+        while True:
+            try:
+                self.connection = socket.create_connection((HOST, PORT), timeout=None)
+                self._log('Connection to server established.')
+                break
+            except BlockingIOError:
+                print('blocked.')
+                time.sleep(0.10)
+
+    def _init_server(self):
+        def listen_and_connect(soc):
+            soc.settimeout(None)
+            soc.listen(1)  # non-blocking
+            self._print_message('Waiting for connection...')
+            connection, address = soc.accept()  # blocking
+            self._print_message('Connected to: {}:{}'.format(address[0], address[1]))
+            return connection
+
+        soc = socket.socket()
         try:
-            self.connection = socket.create_connection((HOST, PORT), timeout=CLIENT_TIMEOUT)
+            soc.bind((HOST, PORT))
+            self._print_message('Socket bound to {}:{}'.format(HOST, PORT))
         except:
-            self._print_message('Could not establish connection, likely due to timeout.')
-            quit()
+            self._print_message('Couldn\'t bind to {}:{}'.format(HOST, PORT))
+            sys.exit()
+        
+        self.connection = listen_and_connect(soc)
 
     def receive_into_queue(self):
         while True:
@@ -74,23 +95,6 @@ class SocketParent:
             self.pop_message_and_act()
             time.sleep(0.1)
     
-    def _init_server(self):
-        def listen_and_connect(soc):
-            soc.listen(1)  # non-blocking
-            self._print_message('Waiting for connection...')
-            connection, address = soc.accept()  # blocking
-            self._print_message('Connected to: {}:{}'.format(address[0], address[1]))
-            return connection
-
-        soc = socket.socket()
-        try:
-            soc.bind((HOST, PORT))
-            self._print_message('Socket bound to {}:{}'.format(HOST, PORT))
-        except:
-            self._print_message('Couldn\'t bind to {}:{}'.format(HOST, PORT))
-            sys.exit()
-        
-        self.connection = listen_and_connect(soc)
     
     def _log(self, str_message):
         if self.CON_TYPE == SocketParent.CLIENT and CLIENT_LOGGING:
@@ -117,11 +121,14 @@ class SocketParent:
         assert('\n' not in str_message)
         self._log('Sending str: {}'.format(str_message))
         as_bytes = bytearray(str_message + '\n', 'utf-8')
-        SocketParent.send_bytes(connection, as_bytes)
+        self.send_bytes(connection, as_bytes)
     
-    @staticmethod
-    def send_bytes(connection, bytes_message):
-        connection.sendall(bytes_message)
+    def send_bytes(self, connection, bytes_message):
+        try:
+            connection.sendall(bytes_message)
+        except ConnectionResetError:
+            self._print_message('Connection was reset.')
+            quit()
     
     def pop_from_queue(self, message_queue):
         if len(message_queue) == 0:
@@ -154,7 +161,7 @@ class SocketParent:
         may contain multiple messages delimited by newlines.  It will
         split on the delimiter and return a list of the discrete messages.
         """
-        as_str = SocketParent.recv_str(connection)
+        as_str = self.recv_str(connection)
         if as_str is None:
             return None
         else:
@@ -169,8 +176,7 @@ class SocketParent:
                     return None
             return json_messages
 
-    @staticmethod
-    def recv_str(connection):
+    def recv_str(self, connection):
         """
         Given a socket connection, receive from its buffer as a utf-8 string.
         If the resulting data is empty (i.e. string has length 0),
@@ -178,19 +184,29 @@ class SocketParent:
         Does NOT split on newline, so if this buffer has more than one message waiting,
         this will return one string of multiple messages (delimited by newlines).
         """
-        as_bytes = SocketParent.recv_bytes(connection)
+        as_bytes = self.recv_bytes(connection)
+        if as_bytes is None:
+            return None
+
         as_str = str(as_bytes, 'utf-8')
         if len(as_str) > 0:
             return as_str
         else:
             return None
     
-    @staticmethod
-    def recv_bytes(connection):
+    def recv_bytes(self, connection):
         """
         Given a socket connection, receive up to 2048 bytes
         from its buffer and return that data as a bytes object.
         Returns an empty bytes object if there is no data to receive.
         """
-        bytes_message = connection.recv(2048)
+        try:
+            bytes_message = connection.recv(2048)
+        except BlockingIOError:
+            # Non-blocking socket couldn't immediately receive.
+            return None
+        except ConnectionResetError:
+            self._print_message('Connection was reset.')
+            quit()
+
         return bytes_message
