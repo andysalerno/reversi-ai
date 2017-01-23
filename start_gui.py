@@ -2,4 +2,8 @@ from gui import reversi_gui
 from gui.reversi_window import ReversiWindow
 from gui.socket_reciver import SocketReceiver
 
-reversi_gui.main()
+def main():
+    reversi_gui.main()
+
+if __name__ == '__main__':
+    main()
