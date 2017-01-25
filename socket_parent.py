@@ -2,6 +2,8 @@ import socket
 import time
 import json
 import threading
+import _thread
+import sys
 
 CLIENT_LOGGING = False
 SERVER_LOGGING = False
@@ -136,7 +138,7 @@ class SocketParent:
             connection.sendall(bytes_message)
         except ConnectionResetError:
             self._print_message('Connection was reset.')
-            quit()
+            _thread.interrupt_main()
     
     def pop_from_queue(self, message_queue):
         if len(message_queue) == 0:
@@ -214,6 +216,6 @@ class SocketParent:
             return None
         except ConnectionResetError:
             self._print_message('Connection was reset.')
-            quit()
+            _thread.interrupt_main()
 
         return bytes_message

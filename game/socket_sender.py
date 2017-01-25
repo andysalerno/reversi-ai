@@ -58,9 +58,10 @@ class SocketSender(SocketParent):
             'winner': winner
         })
     
-    def send_no_legal_moves(self):
+    def send_turn_skipped(self, color):
         self.send_json(self.connection, {
-            'type': SocketParent.NO_MOVES
+            'type': SocketParent.NO_MOVES,
+            'color': color
         })
     
     def pop_move(self):

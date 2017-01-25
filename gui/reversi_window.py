@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from util import color_name
 
 GREEN = QtGui.QColor(51, 204, 51)
 BLACK = QtGui.QColor(0, 0, 0)
@@ -33,9 +34,11 @@ class ReversiWindow(QtWidgets.QWidget):
             dialog.setText('{} wins.'.format(winner))
             dialog.exec_()
         
-        if self.socket_receiver.get_no_moves() is True:
+        player_with_no_moves = self.socket_receiver.get_no_moves()
+        if player_with_no_moves is not None:
+            name = color_name[player_with_no_moves]
             dialog = QtWidgets.QMessageBox()
-            dialog.setText('No available moves, skipping your turn.')
+            dialog.setText('{} had no moves, skipping turn.'.format(name))
             dialog.exec_()
 
     def resizeEvent(self, resize_event):

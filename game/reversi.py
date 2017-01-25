@@ -16,6 +16,7 @@ class Reversi:
     def __init__(self, **kwargs):
         self.size = kwargs.get('size', 8)
         self.gui_enabled = kwargs.get('gui', False)
+        self.human_uses_gui = False
         self.socket_sender = None
         self.board = Board(self.size)
 
@@ -27,10 +28,9 @@ class Reversi:
         make_silent(kwargs.get('silent', False))
 
         if self.gui_enabled:
-            has_human = type(self.white_agent).__name__ == 'HumanAgent' or type(
+            self.human_uses_gui = type(self.white_agent).__name__ == 'HumanAgent' or type(
                 self.black_agent).__name__ == 'HumanAgent'
-            print('has human? {}'.format(has_human))
-            self.socket_sender = SocketSender(has_human)
+            self.socket_sender = SocketSender(self.human_uses_gui)
 
         self.reset()
 
@@ -106,6 +106,10 @@ class Reversi:
 
         if picked is None:
             assert len(legal_moves) == 0
+            if self.human_uses_gui:
+                self.socket_sender.send_turn_skipped(color)
+                # someone had to skip a turn and a human is playing,
+                # so show them a helpful dialog message to let them know.
             return None
         elif picked not in legal_moves:
             info(str(picked) + ' is not a legal move! Game over.')
@@ -115,7 +119,6 @@ class Reversi:
 
     def gui_pick_move(self, legal_moves):
         if len(legal_moves) == 0:
-            self.socket_sender.send_no_legal_moves()
             return None
 
         picked = None

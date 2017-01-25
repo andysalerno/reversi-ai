@@ -46,7 +46,7 @@ class SocketReceiver(SocketParent):
             win_enum = message['winner']
             self.winner = color_name[win_enum]
         elif message['type'] == SocketParent.NO_MOVES:
-            self.no_moves = True
+            self.no_moves = message['color']  # send over the color of the player with no moves
         else:
             raise ValueError(
                 'Unexpected message type: {}'.format(message['type']))
