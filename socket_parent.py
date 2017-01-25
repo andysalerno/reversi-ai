@@ -80,6 +80,7 @@ class SocketParent:
             self._print_message('Socket bound to {}:{}'.format(HOST, PORT))
         except:
             self._print_message('Couldn\'t bind to {}:{}'.format(HOST, PORT))
+            self.connection.close()
             sys.exit()
         
         self.connection = listen_and_connect(soc)
@@ -138,7 +139,9 @@ class SocketParent:
             connection.sendall(bytes_message)
         except ConnectionResetError:
             self._print_message('Connection was reset.')
+            self.connection.close()
             _thread.interrupt_main()
+            sys.exit(1)
     
     def pop_from_queue(self, message_queue):
         if len(message_queue) == 0:
@@ -216,6 +219,7 @@ class SocketParent:
             return None
         except ConnectionResetError:
             self._print_message('Connection was reset.')
+            self.connection.close()
             _thread.interrupt_main()
 
         return bytes_message

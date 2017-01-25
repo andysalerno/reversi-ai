@@ -47,7 +47,7 @@ class Reversi:
         state = self.get_state()
         self.print_board(state)
         info_newline()
-        while self.winner(state) is False:
+        while self.winner(state[0]) is False:
             if self.gui_enabled:
                 self.socket_sender.send_board(state[0])
             color = state[1]
@@ -236,39 +236,38 @@ class Reversi:
         for each in to_flip:
             board.flip_stone(each[0], each[1])
 
-        game_state = (game_state[0], opponent[game_state[1]])
+        game_state = (board, opponent[color])
         return game_state
 
-    def winner(self, game_state):
+    def winner(self, board):
         """Given a game_state, return the color of the winner if there is one,
         otherwise return False to indicate the game isn't won yet.
         Note that legal_moves() is a slow operation, so this method
         tries to call it as few times as possible."""
-        board = game_state[0]
         black_count, white_count = board.get_stone_counts()
 
         # a full board means no more moves can be made, game over.
         if board.is_full():
-            if black_count > white_count:
+            if black_count >= white_count:
+                # tie goes to black
                 return BLACK
             else:
-                # tie goes to white
                 return WHITE
 
         # a non-full board can still be game-over if neither player can move.
-        black_legal = self.legal_moves((game_state[0], BLACK))
+        black_legal = self.legal_moves((board, BLACK))
         if black_legal:
             return False
 
-        white_legal = self.legal_moves((game_state[0], WHITE))
+        white_legal = self.legal_moves((board, WHITE))
         if white_legal:
             return False
 
         # neither black nor white has valid moves
-        if black_count > white_count:
+        if black_count >= white_count:
+            # tie goes to black
             return BLACK
         else:
-            # tie goes to white
             return WHITE
 
     def get_board(self):

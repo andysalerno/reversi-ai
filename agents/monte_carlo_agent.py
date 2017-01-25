@@ -198,9 +198,10 @@ class MonteCarloAgent(Agent):
         LOSS_PRIZE = 0
         state = copy.deepcopy(game_state)
         while True:
-            winner = self.reversi.winner(state)
+            board = state[0]
+            winner = self.reversi.winner(board)
             if winner is not False:
-                black_count, white_count = state[0].get_stone_counts()
+                black_count, white_count = board.get_stone_counts()
                 if black_count == white_count:
                     # we don't want to tie, we want to win!
                     return LOSS_PRIZE
@@ -229,7 +230,7 @@ class TreeManager:
 
     def add_node(self, game_state, move, parent=None):
         legal_moves = self.reversi.legal_moves(game_state)
-        is_game_over = self.reversi.winner(game_state) is not False
+        is_game_over = self.reversi.winner(game_state[0]) is not False
         if len(legal_moves) == 0 and not is_game_over:
             legal_moves = [None]  # it can only make one move: pass turn
         n = Node(game_state, move, legal_moves)
