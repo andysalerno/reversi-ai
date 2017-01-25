@@ -1,6 +1,3 @@
-import hashlib
-import numpy as np
-cimport numpy as np
 from util import *
 from cpython cimport bool
 
