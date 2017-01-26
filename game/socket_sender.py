@@ -14,11 +14,9 @@ INITIAL_STRING = 'initial_string'
 class SocketSender(SocketParent):
 
     def __init__(self, accept_gui_moves):
-        super(SocketSender, self).__init__(SocketParent.SERVER)
-
         self.move = None  # set this when we receive a move from the gui
         self.accept_gui_moves = accept_gui_moves
-
+        super(SocketSender, self).__init__(SocketParent.SERVER)
     
     def act_on_message(self, message):
         assert 'type' in message.keys()

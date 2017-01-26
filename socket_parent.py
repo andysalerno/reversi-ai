@@ -106,6 +106,7 @@ class SocketParent:
     def pop_message_and_act_loop(self):
         while True:
             self.act_on_queue()
+            time.sleep(SOCKET_POLL_FREQ)
     
     def _log(self, str_message):
         if self.CON_TYPE == SocketParent.CLIENT and CLIENT_LOGGING:
