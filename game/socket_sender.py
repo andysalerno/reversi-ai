@@ -1,5 +1,6 @@
 from socket_parent import SocketParent
 import socket
+import time
 import json
 import sys
 from util import BLACK, WHITE
@@ -16,12 +17,22 @@ class SocketSender(SocketParent):
     def __init__(self, accept_gui_moves):
         self.move = None  # set this when we receive a move from the gui
         self.accept_gui_moves = accept_gui_moves
+        self.ready_to_play = False  # not until we receive READY_TO_RECEIVE from gui
         super(SocketSender, self).__init__(SocketParent.SERVER)
+    
+    def wait_for_gui(self):
+        """
+        Blocks until ready message is received from gui.
+        """
+        self._print_message('Waiting to hear from gui...')
+        while not self.ready_to_play:
+            time.sleep(0.1)
     
     def act_on_message(self, message):
         assert 'type' in message.keys()
 
         if message['type'] == SocketParent.CONTROL and message['message'] == SocketParent.READY_TO_RECEIVE:
+            self.ready_to_play = True
             self._log('Ready message received.')
 
             # Reply to ready message with hello message

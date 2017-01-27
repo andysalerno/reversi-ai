@@ -86,9 +86,12 @@ class SocketParent:
         self.connection = listen_and_connect(soc)
 
     def receive_into_queue(self):
-        while True:
-            self.recv_json_into_queue(self.connection, self.message_queue)
-            time.sleep(SOCKET_POLL_FREQ)
+        try:
+            while True:
+                self.recv_json_into_queue(self.connection, self.message_queue)
+                time.sleep(SOCKET_POLL_FREQ)
+        except UnboundLocalError:
+            self._print_message('Connection closed.')
     
     def act_on_message(self, message):
         raise NotImplementedError

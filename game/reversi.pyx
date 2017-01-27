@@ -30,6 +30,7 @@ class Reversi:
             self.human_uses_gui = type(self.white_agent).__name__ == 'HumanAgent' or type(
                 self.black_agent).__name__ == 'HumanAgent'
             self.socket_sender = SocketSender(self.human_uses_gui)
+            self.socket_sender.wait_for_gui()
 
         self.reset()
 

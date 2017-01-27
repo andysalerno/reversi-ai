@@ -9,7 +9,6 @@ from game.socket_sender import SocketSender
 # time in ms to wait between polling move queue for moves from gui
 MOVE_QUEUE_POLL = 0.10
 
-
 class Reversi:
     """This class enforces the rules of the game of Reversi."""
 
@@ -31,6 +30,7 @@ class Reversi:
             self.human_uses_gui = type(self.white_agent).__name__ == 'HumanAgent' or type(
                 self.black_agent).__name__ == 'HumanAgent'
             self.socket_sender = SocketSender(self.human_uses_gui)
+            self.socket_sender.wait_for_gui()
 
         self.reset()
 
