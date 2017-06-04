@@ -6,7 +6,7 @@ BLACK = QtGui.QColor(0, 0, 0)
 WHITE = QtGui.QColor(255, 255, 255)
 
 # frequency (ms) to poll the SocketReceiver for new board state
-POLL_QUEUE_INTERVAL = 0.25 * 1000 
+POLL_QUEUE_INTERVAL = 0.25 * 1000
 
 
 class ReversiWindow(QtWidgets.QWidget):
@@ -18,12 +18,11 @@ class ReversiWindow(QtWidgets.QWidget):
         self.setMinimumSize(320, 240)
         self.board = None
 
-
         # timer for repainting/polling network
         timer = QtCore.QTimer(self)
         timer.timeout.connect(self.poll_msg_queue)
         timer.start(POLL_QUEUE_INTERVAL)
-    
+
     def poll_msg_queue(self):
         self.board = self.socket_receiver.get_board()
         self.repaint()
@@ -33,7 +32,7 @@ class ReversiWindow(QtWidgets.QWidget):
             dialog = QtWidgets.QMessageBox()
             dialog.setText('{} wins.'.format(winner))
             dialog.exec_()
-        
+
         player_with_no_moves = self.socket_receiver.get_no_moves()
         if player_with_no_moves is not None:
             name = color_name[player_with_no_moves]
@@ -44,9 +43,9 @@ class ReversiWindow(QtWidgets.QWidget):
     def resizeEvent(self, resize_event):
         new_size = resize_event.size()
         new_height = new_size.height()
-        new_width = int(new_height * 1) #  change ratio how you like
+        new_width = int(new_height * 1)  # change ratio how you like
         self.resize(new_width, new_height)
-    
+
     def mousePressEvent(self, mouse_event):
         grid_x, grid_y = self.pixels_to_grid(mouse_event.x(), mouse_event.y())
         self.socket_receiver.send_move((grid_x, grid_y))
@@ -92,5 +91,3 @@ class ReversiWindow(QtWidgets.QWidget):
         grid_height = self.height() / 8
 
         return int(pix_x / grid_width), int(8 - (pix_y / grid_height))
-                
-    

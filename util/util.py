@@ -25,11 +25,6 @@ def info(message):
             print(message)
 
 
-def info_newline():
-    if not silent:
-        print()
-
-
 def to_offset(move, size):
     x, y = move
     return y * size + x

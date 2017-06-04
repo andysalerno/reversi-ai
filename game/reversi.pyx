@@ -3,11 +3,11 @@ import time
 from game.board import Board, BLACK, WHITE, EMPTY
 from agents.random_agent import RandomAgent
 from util import *
-from cache_dict import CacheDict
 from game.socket_sender import SocketSender
 
 # time in ms to wait between polling move queue for moves from gui
 MOVE_QUEUE_POLL = 0.10
+
 
 class Reversi:
     """This class enforces the rules of the game of Reversi."""
@@ -46,7 +46,7 @@ class Reversi:
     def play_game(self):
         state = self.get_state()
         self.print_board(state)
-        info_newline()
+        info('')
         while self.winner(state[0]) is False:
             if self.gui_enabled:
                 self.socket_sender.send_board(state[0])
@@ -59,15 +59,13 @@ class Reversi:
                     color_name[color]))
             else:
                 info('{} plays at {}'.format(color_name[color], str(picked)))
-            info_newline()
+            info('')
 
         # Game Over
         self.white_agent.observe_win(state)
         self.black_agent.observe_win(state)
 
         self.print_board(state)
-
-
         # figure out who won
         black_count, white_count = state[0].get_stone_counts()
         winner = BLACK if black_count > white_count else WHITE

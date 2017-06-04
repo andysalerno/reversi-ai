@@ -1,10 +1,18 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
-import start_gui
 import run_game
+from gui import start_client
 import multiprocessing as mp
 
+
 def main():
-    
+    try:
+        run()
+    except KeyboardInterrupt:
+        print('Quitting.')
+
+
+def run():
+
     # ask user for difficulty
     q_app = QtWidgets.QApplication([])
     q_widget = QtWidgets.QWidget()
@@ -27,16 +35,9 @@ def main():
     elif ret == impossible:
         sim_time = 8
 
-    print('here')
     mp.set_start_method('spawn')
-    gui_process = mp.Process(target=start_gui.main)
+    gui_process = mp.Process(target=start_client.main)
     gui_process.start()
 
-    run_game.main(BlackAgent='human', WhiteAgent='monte_carlo', sim_time=sim_time, gui=True)
-
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print('Quitting.')
+    run_game.main(BlackAgent='human', WhiteAgent='monte_carlo',
+                  sim_time=sim_time, gui=True)

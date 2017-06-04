@@ -1,7 +1,8 @@
 import sys
 from PyQt5 import QtWidgets, QtCore, QtGui
-from gui import ReversiWindow
-from gui import SocketReceiver
+from gui.reversi_window import ReversiWindow
+from gui.socket_receiver import SocketReceiver
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

@@ -1,8 +1,5 @@
-from socket_parent import SocketParent
+from gui.socket_parent import SocketParent
 from util import color_name
-
-HOST = ''
-PORT = 10994
 
 
 class SocketReceiver(SocketParent):
@@ -46,7 +43,8 @@ class SocketReceiver(SocketParent):
             win_enum = message['winner']
             self.winner = color_name[win_enum]
         elif message['type'] == SocketParent.NO_MOVES:
-            self.no_moves = message['color']  # send over the color of the player with no moves
+            # send over the color of the player with no moves
+            self.no_moves = message['color']
         else:
             raise ValueError(
                 'Unexpected message type: {}'.format(message['type']))

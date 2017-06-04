@@ -3,8 +3,7 @@ from sys import argv
 import time
 from game.reversi import Reversi
 from agents import random_agent, monte_carlo_agent, human_agent
-from util import *
-from prop_parse import prop_parse
+from util import prop_parse, make_silent, info
 
 prop_names = {
     # agent names. if user passes BlackAgent=human, becomes human_agent.Hu...
