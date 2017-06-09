@@ -44,10 +44,12 @@ class Reversi:
         self.black_agent.reset()
 
     def play_game(self):
+        board_history = []
         state = self.get_state()
         self.print_board(state)
         info('')
         while self.winner(state[0]) is False:
+            board_history.append(deepcopy(state[0].get_board()))
             if self.gui_enabled:
                 self.socket_sender.send_board(state[0])
             color = state[1]
@@ -60,6 +62,8 @@ class Reversi:
             else:
                 info('{} plays at {}'.format(color_name[color], str(picked)))
             info('')
+
+        board_history.append(deepcopy(state[0].get_board()))
 
         # Game Over
         self.white_agent.observe_win(state)
@@ -76,7 +80,7 @@ class Reversi:
             self.socket_sender.send_game_over(winner)
 
         self.reset()
-        return winner, white_count, black_count
+        return winner, white_count, black_count, board_history
 
     @staticmethod
     def print_board(state):

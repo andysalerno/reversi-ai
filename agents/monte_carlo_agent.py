@@ -3,7 +3,7 @@ import time
 import math
 import copy
 from agents.agent import Agent
-from util import *
+from util import info, opponent
 
 
 class MonteCarloAgent(Agent):
@@ -122,28 +122,12 @@ class MonteCarloAgent(Agent):
         """
         # legal moves represent potential children of root node
         legal_moves = root.legal_moves
-        if len(legal_moves) == 0:
-            # no legal moves + game is over = we are at a final leaf node
-            # that cannot possibly have any children; game over
-            #root.amount_children_unexpanded = 0
-
-            # if this makes ALL the parent's children expanded,
-            # prop that information up the tree
-            # child = root
-            # parent = root.parent
-            # while parent is not None and child.amount_children_unexpanded == 0:
-            #     parent.amount_children_unexpanded = max(
-            #         0, parent.amount_children_unexpanded - 1)
-            #     new_parent = parent.parent
-            #    child = parent
-            #    parent = new_parent
-
+        if not legal_moves:
             return root
         elif legal_moves == [None]:
             #  if player must pass turn
             next_state = self.reversi.next_state(root.game_state, None)
             pass_node = self.tree_manager.add_node(next_state, None, root)
-            # return self.tree_policy(pass_node)
             return pass_node
 
         elif len(root.children) < len(legal_moves):
@@ -153,7 +137,7 @@ class MonteCarloAgent(Agent):
                 if move not in root.moves_tried
             ]
 
-            assert len(untried) > 0
+            assert untried
 
             # we have no information about these nodes at all, so pick randomly
             move = random.choice(untried)

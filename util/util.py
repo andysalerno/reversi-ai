@@ -1,9 +1,9 @@
 import math
 import random
 
-BLACK = 1
-WHITE = -1
-EMPTY = 0
+BLACK = 1.0
+WHITE = 0.5
+EMPTY = 0.0
 
 color_name = {BLACK: 'Black', WHITE: 'White'}
 opponent = {BLACK: WHITE, WHITE: BLACK}
